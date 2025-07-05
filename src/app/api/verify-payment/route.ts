@@ -13,11 +13,6 @@ const VerifyPaymentSchema = z.object({
   observacoes: z.string().max(500, 'Observações não podem exceder 500 caracteres').optional()
 })
 
-const CheckPaymentSchema = z.object({
-  numeroReferencia: z.string().min(1, 'Número de referência é obrigatório'),
-  metodoPagamento: z.string().min(1, 'Método de pagamento é obrigatório')
-})
-
 export async function POST(request: NextRequest) {
   try {
     const user = await currentUser()
@@ -117,10 +112,10 @@ export async function POST(request: NextRequest) {
             valor: validatedData.valor,
             observacoes: validatedData.observacoes,
             verificadoAutomaticamente: !!verificacaoFasmaPay,
-            dadosVerificacao: verificacaoFasmaPay ? {
+            dadosVerificacao: verificacaoFasmaPay ? JSON.parse(JSON.stringify({
               fasmapay: verificacaoFasmaPay,
               verificadoEm: new Date().toISOString()
-            } : null,
+            })) : null,
             status: verificacaoFasmaPay ? 'VERIFICADO' : 'PENDENTE'
           }
         })

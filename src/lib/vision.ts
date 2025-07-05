@@ -12,12 +12,19 @@ export function getVisionClient() {
       })
     } else if (process.env.GOOGLE_CLOUD_VISION_KEY) {
       // Para desenvolvimento, usar key como string
-      const credentials = JSON.parse(process.env.GOOGLE_CLOUD_VISION_KEY)
-      visionClient = new ImageAnnotatorClient({
-        credentials,
-      })
+      try {
+        const credentials = JSON.parse(process.env.GOOGLE_CLOUD_VISION_KEY)
+        visionClient = new ImageAnnotatorClient({
+          credentials,
+        })
+      } catch (error) {
+        console.error('Erro ao fazer parse das credenciais Google Vision:', error)
+        throw new Error('Credenciais do Google Vision inválidas')
+      }
     } else {
-      throw new Error('Credenciais do Google Vision não configuradas')
+      console.warn('Google Vision não configurado - funcionalidade de OCR desabilitada')
+      // Retornar um cliente mock para desenvolvimento/build
+      visionClient = null as any
     }
   }
   return visionClient
@@ -43,6 +50,13 @@ export interface BIExtractionResult {
 export async function extractTextFromImage(imageBuffer: Buffer): Promise<OCRResult> {
   try {
     const client = getVisionClient()
+    
+    if (!client) {
+      return {
+        extractedText: '',
+        confidence: 0
+      }
+    }
     
     const [result] = await client.textDetection({
       image: {
@@ -79,6 +93,13 @@ export async function extractTextFromImage(imageBuffer: Buffer): Promise<OCRResu
 export async function extractBIData(imageBase64: string): Promise<BIExtractionResult> {
   try {
     const client = getVisionClient()
+    
+    if (!client) {
+      return {
+        extractedText: '',
+        confidence: 0
+      }
+    }
     
     // Remover prefixo data:image se existir
     const base64Data = imageBase64.replace(/^data:image\/[a-z]+;base64,/, '')

@@ -188,12 +188,20 @@ export async function GET(request: NextRequest) {
     const skip = (page - 1) * limit
 
     // Construir filtros
-    const where: any = {
+    const where: {
+      ativo: boolean
+      tipo?: 'COMPRA' | 'VENDA'
+      moedaOrigem?: string
+      moedaDestino?: string
+      valorMaximo?: { gte: number }
+      valorMinimo?: { lte: number }
+      localizacao?: { contains: string, mode: 'insensitive' }
+    } = {
       ativo: true
     }
 
     if (tipo && ['COMPRA', 'VENDA'].includes(tipo)) {
-      where.tipo = tipo
+      where.tipo = tipo as 'COMPRA' | 'VENDA'
     }
 
     if (moedaOrigem && MOEDAS_PERMITIDAS.includes(moedaOrigem)) {
@@ -318,7 +326,7 @@ export async function PATCH(request: NextRequest) {
     // Atualizar oferta
     const { id, ...updateData } = validatedData
     const ofertaAtualizada = await prisma.oferta.update({
-      where: { id: validatedData.id },
+      where: { id },
       data: updateData,
       include: {
         user: {

@@ -185,7 +185,11 @@ export async function GET(request: NextRequest) {
     const skip = (page - 1) * limit
 
     // Construir filtros
-    const where: any = {}
+    const where: {
+      avaliadoId?: string
+      transacaoId?: string
+      avaliadorId?: string
+    } = {}
 
     if (usuarioId) {
       where.avaliadoId = usuarioId

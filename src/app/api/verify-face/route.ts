@@ -139,7 +139,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     const user = await currentUser()
     
@@ -180,7 +180,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-export async function DELETE(request: NextRequest) {
+export async function DELETE() {
   try {
     const user = await currentUser()
     
@@ -211,7 +211,7 @@ export async function DELETE(request: NextRequest) {
         faceVerifiedAt: null,
         faceId: null,
         fioToken: null,
-        faceData: null
+        faceData: undefined
       }
     })
 

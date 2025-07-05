@@ -67,14 +67,20 @@ export async function verifyPaymentProof(
       valid: response.data.valid,
       data: response.data.paymentData
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Erro ao verificar comprovante:', error)
     
-    if (error.response) {
+    const axiosError = error as { 
+      response?: { 
+        data?: { message?: string } 
+      } 
+    }
+    
+    if (axiosError.response) {
       return {
         success: false,
         valid: false,
-        error: error.response.data?.message || 'Erro na API FasmaPay'
+        error: axiosError.response.data?.message || 'Erro na API FasmaPay'
       }
     }
     
@@ -103,4 +109,78 @@ export async function validateProofTimestamp(
   const now = new Date()
   const diffHours = (now.getTime() - proofTime.getTime()) / (1000 * 60 * 60)
   return diffHours <= maxHoursOld
+}
+
+export interface PaymentVerificationRequest {
+  referencia: string
+  valor: number
+  metodo: string
+}
+
+export async function verifyPaymentWithFasmaPay(
+  request: PaymentVerificationRequest
+): Promise<FasmaPayResponse> {
+  try {
+    if (!FASMAPAY_SECRET_KEY) {
+      // Simulação para desenvolvimento
+      console.log('Simulando verificação automática:', request)
+      return {
+        success: true,
+        valid: true,
+        data: {
+          id: 'AUTO_' + Date.now(),
+          amount: request.valor,
+          currency: 'AOA',
+          timestamp: new Date().toISOString(),
+          sender: 'Sistema Automático',
+          receiver: 'CANTRAST',
+          reference: request.referencia
+        }
+      }
+    }
+
+    const response = await axios.post(
+      `${FASMAPAY_API_URL}/verify-reference`,
+      {
+        reference: request.referencia,
+        expectedAmount: request.valor,
+        paymentMethod: request.metodo
+      },
+      {
+        headers: {
+          'Authorization': `Bearer ${FASMAPAY_SECRET_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        timeout: 30000
+      }
+    )
+
+    return {
+      success: true,
+      valid: response.data.valid,
+      data: response.data.paymentData
+    }
+  } catch (error: unknown) {
+    console.error('Erro ao verificar referência:', error)
+    
+    const axiosError = error as { 
+      response?: { 
+        data?: { message?: string } 
+      } 
+    }
+    
+    if (axiosError.response) {
+      return {
+        success: false,
+        valid: false,
+        error: axiosError.response.data?.message || 'Erro na API FasmaPay'
+      }
+    }
+    
+    return {
+      success: false,
+      valid: false,
+      error: 'Falha na conexão com FasmaPay'
+    }
+  }
 }

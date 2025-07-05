@@ -50,7 +50,10 @@ export async function GET(request: NextRequest) {
     }
 
     // Construir filtros
-    const where: any = {
+    const where: {
+      OR: Array<{ compradorId: string } | { vendedorId: string }>
+      status?: 'AGUARDANDO_PAGAMENTO' | 'PAGAMENTO_ENVIADO' | 'PAGAMENTO_CONFIRMADO' | 'CONCLUIDA' | 'CANCELADA'
+    } = {
       OR: [
         { compradorId: userRecord.id },
         { vendedorId: userRecord.id }
@@ -58,7 +61,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (status && ['AGUARDANDO_PAGAMENTO', 'PAGAMENTO_ENVIADO', 'PAGAMENTO_CONFIRMADO', 'CONCLUIDA', 'CANCELADA'].includes(status)) {
-      where.status = status
+      where.status = status as 'AGUARDANDO_PAGAMENTO' | 'PAGAMENTO_ENVIADO' | 'PAGAMENTO_CONFIRMADO' | 'CONCLUIDA' | 'CANCELADA'
     }
 
     if (role === 'comprador') {

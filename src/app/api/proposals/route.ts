@@ -215,7 +215,13 @@ export async function GET(request: NextRequest) {
     }
 
     // Construir filtros
-    const where: any = {}
+    const where: {
+      oferta?: { userId: string }
+      userId?: string
+      status?: 'PENDENTE' | 'ACEITA' | 'REJEITADA'
+      ofertaId?: string
+      OR?: Array<{ userId: string } | { oferta: { userId: string } }>
+    } = {}
 
     if (type === 'received') {
       // Propostas recebidas (para ofertas do usuário)
@@ -236,7 +242,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (status && ['PENDENTE', 'ACEITA', 'REJEITADA'].includes(status)) {
-      where.status = status
+      where.status = status as 'PENDENTE' | 'ACEITA' | 'REJEITADA'
     }
 
     // Buscar propostas

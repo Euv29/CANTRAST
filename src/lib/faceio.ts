@@ -1,7 +1,30 @@
 // Configuração do FaceIO para verificação facial
+interface FaceIOLib {
+  new(publicKey: string): FaceIOInstance;
+}
+
+interface FaceIOInstance {
+  enroll(options?: FaceIOOptions): Promise<FaceIOResponse>;
+  authenticate(options?: FaceIOOptions): Promise<FaceIOResponse>;
+  restartSession(): void;
+}
+
+interface FaceIOResponse {
+  facialId: string;
+  timestamp: number;
+  details: {
+    age?: number;
+    gender?: string;
+    geoLocation?: {
+      longitude: number;
+      latitude: number;
+    };
+  };
+}
+
 declare global {
   interface Window {
-    faceIO: any;
+    faceIO: FaceIOLib;
   }
 }
 
@@ -13,7 +36,7 @@ export interface FaceIOOptions {
 }
 
 export class FaceIOManager {
-  private faceio: any;
+  private faceio: FaceIOInstance | null = null;
   private isInitialized: boolean = false;
 
   constructor() {
@@ -52,37 +75,37 @@ export class FaceIOManager {
   }
 
   async enroll(options?: FaceIOOptions): Promise<string> {
-    if (!this.isInitialized) {
-      throw new Error('FaceIO não inicializado');
+    if (!this.isInitialized || !this.faceio) {
+      throw new Error('FaceIO não inicializado')
     }
 
     try {
-      const response = await this.faceio.enroll({
+      const response = await this.faceio!.enroll({
         locale: 'pt',
         userConsent: true,
         ...options
-      });
-      return response.facialId;
+      })
+      return response.facialId
     } catch (error) {
-      console.error('Erro no enrollment facial:', error);
-      throw error;
+      console.error('Erro no enrollment facial:', error)
+      throw error
     }
   }
 
   async authenticate(facialId?: string): Promise<string> {
-    if (!this.isInitialized) {
-      throw new Error('FaceIO não inicializado');
+    if (!this.isInitialized || !this.faceio) {
+      throw new Error('FaceIO não inicializado')
     }
 
     try {
-      const response = await this.faceio.authenticate({
+      const response = await this.faceio!.authenticate({
         locale: 'pt',
         ...(facialId && { facioIdExternalDatabaseID: facialId })
-      });
-      return response.facialId;
+      })
+      return response.facialId
     } catch (error) {
-      console.error('Erro na autenticação facial:', error);
-      throw error;
+      console.error('Erro na autenticação facial:', error)
+      throw error
     }
   }
 }
