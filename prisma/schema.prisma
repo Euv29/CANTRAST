@@ -9,153 +9,252 @@ datasource db {
 
 // Modelo de usuário integrado com Clerk
 model User {
-  id              String    @id @default(cuid())
-  clerkId         String    @unique
-  email           String    @unique
-  firstName       String?
-  lastName        String?
-  imageUrl        String?
-  phone           String?
+  id                String    @id @default(cuid())
+  clerkId           String    @unique
+  email             String    @unique
+  name              String?
+  avatar            String?
+  phone             String?
   
   // Verificação de identidade
-  biNumber        String?
-  biImageUrl      String?
-  faceId          String?
-  isVerified      Boolean   @default(false)
-  verifiedAt      DateTime?
+  biNumber          String?   @unique
+  biVerified        Boolean   @default(false)
+  verified          Boolean   @default(false) // Todas as verificações concluídas
   
   // Reputação
-  reputation      Float     @default(0)
-  totalRatings    Int       @default(0)
+  reputacao         Float     @default(0)
+  totalAvaliacoes   Int       @default(0)
   
   // Timestamps
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
   
   // Relações
-  offers          Offer[]
-  proposals       Proposal[]
-  sentReviews     Review[]  @relation("ReviewFrom")
-  receivedReviews Review[]  @relation("ReviewTo")
+  ofertas           Oferta[]
+  propostas         Proposta[]
+  transacoesComprador Transacao[] @relation("TransacaoComprador")
+  transacoesVendedor  Transacao[] @relation("TransacaoVendedor")
+  avaliacoesFeitas  Avaliacao[] @relation("AvaliacaoAvaliador")
+  avaliacoesRecebidas Avaliacao[] @relation("AvaliacaoAvaliado")
+  mensagens         Mensagem[]
+  verificacao       Verificacao?
   
   @@map("users")
 }
 
-// Modelo de oferta
-model Offer {
-  id          String      @id @default(cuid())
-  type        OfferType   // SELL ou BUY
-  fromCurrency String     // USD, EUR, etc
-  toCurrency   String     // KZ
-  amount      Float
-  rate        Float       // Taxa de câmbio
-  status      OfferStatus @default(ACTIVE)
-  description String?
+// Verificações detalhadas do usuário
+model Verificacao {
+  id                String    @id @default(cuid())
+  userId            String    @unique
+  
+  // Verificação de BI
+  biVerified        Boolean   @default(false)
+  biVerifiedAt      DateTime?
+  extractedData     Json?     // Dados extraídos do OCR
+  
+  // Verificação facial
+  faceVerified      Boolean   @default(false)
+  faceVerifiedAt    DateTime?
+  faceId            String?   @unique
+  fioToken          String?
+  faceData          Json?
+  
+  // Verificação de telefone
+  phoneVerified     Boolean   @default(false)
+  phoneVerifiedAt   DateTime?
+  phoneNumber       String?
   
   // Timestamps
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
-  expiresAt   DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
   
   // Relações
-  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId      String
-  proposals   Proposal[]
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   
-  @@map("offers")
+  @@map("verificacoes")
+}
+
+// Modelo de oferta
+model Oferta {
+  id              String     @id @default(cuid())
+  tipo            TipoOferta // COMPRA ou VENDA
+  moedaOrigem     String     // USD, EUR, AOA, etc
+  moedaDestino    String     // USD, EUR, AOA, etc
+  valorMinimo     Float
+  valorMaximo     Float
+  taxa            Float      // Taxa de câmbio
+  metodoPagamento String[]   // Array de métodos aceitos
+  localizacao     String?
+  observacoes     String?
+  ativo           Boolean    @default(true)
+  
+  // Timestamps
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+  expiresAt       DateTime?
+  
+  // Relações
+  user            User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId          String
+  propostas       Proposta[]
+  
+  @@map("ofertas")
 }
 
 // Modelo de proposta
-model Proposal {
-  id          String         @id @default(cuid())
-  message     String?
-  proposedRate Float?
-  status      ProposalStatus @default(PENDING)
+model Proposta {
+  id              String         @id @default(cuid())
+  valor           Float
+  metodoPagamento String
+  mensagem        String?
+  mensagemResposta String?
+  status          StatusProposta @default(PENDENTE)
+  respondidaEm    DateTime?
   
   // Timestamps
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
   
   // Relações
-  offer       Offer          @relation(fields: [offerId], references: [id], onDelete: Cascade)
-  offerId     String
-  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId      String
-  transaction Transaction?
+  oferta          Oferta         @relation(fields: [ofertaId], references: [id], onDelete: Cascade)
+  ofertaId        String
+  user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId          String
+  transacao       Transacao?
   
-  @@map("proposals")
+  @@map("propostas")
 }
 
 // Modelo de transação
-model Transaction {
+model Transacao {
   id                String            @id @default(cuid())
-  status            TransactionStatus @default(PENDING)
-  paymentProofUrl   String?
-  
-  // Confirmações
-  senderConfirmed   Boolean           @default(false)
-  receiverConfirmed Boolean           @default(false)
-  completedAt       DateTime?
-  
-  // Chat
-  chatMessages      Json[]            @default([])
+  valor             Float
+  moedaOrigem       String
+  moedaDestino      String
+  taxa              Float
+  metodoPagamento   String
+  status            StatusTransacao   @default(AGUARDANDO_PAGAMENTO)
+  comprovante       String?
+  observacoes       String?
+  concluidaEm       DateTime?
   
   // Timestamps
   createdAt         DateTime          @default(now())
   updatedAt         DateTime          @updatedAt
   
   // Relações
-  proposal          Proposal          @relation(fields: [proposalId], references: [id], onDelete: Cascade)
-  proposalId        String            @unique
+  proposta          Proposta          @relation(fields: [propostaId], references: [id], onDelete: Cascade)
+  propostaId        String            @unique
   
-  @@map("transactions")
+  comprador         User              @relation("TransacaoComprador", fields: [compradorId], references: [id])
+  compradorId       String
+  
+  vendedor          User              @relation("TransacaoVendedor", fields: [vendedorId], references: [id])
+  vendedorId        String
+  
+  mensagens         Mensagem[]
+  verificacoesPagamento VerificacaoPagamento[]
+  avaliacoes        Avaliacao[]
+  
+  @@map("transacoes")
+}
+
+// Mensagens do chat
+model Mensagem {
+  id          String      @id @default(cuid())
+  mensagem    String
+  anexo       String?     // URL de arquivo anexado
+  tipo        TipoMensagem @default(USUARIO)
+  
+  // Timestamps
+  createdAt   DateTime    @default(now())
+  
+  // Relações
+  transacao   Transacao   @relation(fields: [transacaoId], references: [id], onDelete: Cascade)
+  transacaoId String
+  
+  usuario     User        @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  usuarioId   String
+  
+  @@map("mensagens")
+}
+
+// Verificações de pagamento
+model VerificacaoPagamento {
+  id                      String    @id @default(cuid())
+  comprovanteUrl          String
+  numeroReferencia        String
+  metodoPagamento         String
+  valor                   Float
+  observacoes             String?
+  observacoesVendedor     String?
+  verificadoAutomaticamente Boolean @default(false)
+  dadosVerificacao        Json?     // Dados da API externa
+  status                  StatusVerificacao @default(PENDENTE)
+  verificadoEm            DateTime?
+  erroVerificacao         String?
+  
+  // Timestamps
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+  
+  // Relações
+  transacao               Transacao @relation(fields: [transacaoId], references: [id], onDelete: Cascade)
+  transacaoId             String
+  
+  @@map("verificacoes_pagamento")
 }
 
 // Modelo de avaliação
-model Review {
-  id        String   @id @default(cuid())
-  rating    Int      // 1-5 estrelas
-  comment   String?
+model Avaliacao {
+  id          String   @id @default(cuid())
+  rating      Int      // 1-5 estrelas
+  comentario  String
   
   // Timestamps
-  createdAt DateTime @default(now())
+  createdAt   DateTime @default(now())
   
   // Relações
-  from      User     @relation("ReviewFrom", fields: [fromId], references: [id], onDelete: Cascade)
-  fromId    String
-  to        User     @relation("ReviewTo", fields: [toId], references: [id], onDelete: Cascade)
-  toId      String
+  transacao   Transacao @relation(fields: [transacaoId], references: [id], onDelete: Cascade)
+  transacaoId String
   
-  @@unique([fromId, toId])
-  @@map("reviews")
+  avaliador   User     @relation("AvaliacaoAvaliador", fields: [avaliadorId], references: [id], onDelete: Cascade)
+  avaliadorId String
+  
+  avaliado    User     @relation("AvaliacaoAvaliado", fields: [avaliadoId], references: [id], onDelete: Cascade)
+  avaliadoId  String
+  
+  @@unique([transacaoId, avaliadorId])
+  @@map("avaliacoes")
 }
 
 // Enums
-enum OfferType {
-  SELL
-  BUY
+enum TipoOferta {
+  COMPRA
+  VENDA
 }
 
-enum OfferStatus {
-  ACTIVE
-  PAUSED
-  COMPLETED
-  CANCELLED
+enum StatusProposta {
+  PENDENTE
+  ACEITA
+  REJEITADA
 }
 
-enum ProposalStatus {
-  PENDING
-  ACCEPTED
-  REJECTED
-  CANCELLED
+enum StatusTransacao {
+  AGUARDANDO_PAGAMENTO
+  PAGAMENTO_ENVIADO
+  PAGAMENTO_CONFIRMADO
+  CONCLUIDA
+  CANCELADA
 }
 
-enum TransactionStatus {
-  PENDING
-  IN_PROGRESS
-  PAYMENT_PENDING
-  PAYMENT_VERIFIED
-  COMPLETED
-  CANCELLED
-  DISPUTED
+enum TipoMensagem {
+  USUARIO
+  SISTEMA
+}
+
+enum StatusVerificacao {
+  PENDENTE
+  VERIFICADO
+  REJEITADO
 }
