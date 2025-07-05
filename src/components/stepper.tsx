@@ -1,0 +1,1 @@
+// Componente stepper para verificação

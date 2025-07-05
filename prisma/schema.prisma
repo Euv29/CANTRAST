@@ -1,0 +1,161 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Modelo de usuário integrado com Clerk
+model User {
+  id              String    @id @default(cuid())
+  clerkId         String    @unique
+  email           String    @unique
+  firstName       String?
+  lastName        String?
+  imageUrl        String?
+  phone           String?
+  
+  // Verificação de identidade
+  biNumber        String?
+  biImageUrl      String?
+  faceId          String?
+  isVerified      Boolean   @default(false)
+  verifiedAt      DateTime?
+  
+  // Reputação
+  reputation      Float     @default(0)
+  totalRatings    Int       @default(0)
+  
+  // Timestamps
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  // Relações
+  offers          Offer[]
+  proposals       Proposal[]
+  sentReviews     Review[]  @relation("ReviewFrom")
+  receivedReviews Review[]  @relation("ReviewTo")
+  
+  @@map("users")
+}
+
+// Modelo de oferta
+model Offer {
+  id          String      @id @default(cuid())
+  type        OfferType   // SELL ou BUY
+  fromCurrency String     // USD, EUR, etc
+  toCurrency   String     // KZ
+  amount      Float
+  rate        Float       // Taxa de câmbio
+  status      OfferStatus @default(ACTIVE)
+  description String?
+  
+  // Timestamps
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  expiresAt   DateTime?
+  
+  // Relações
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      String
+  proposals   Proposal[]
+  
+  @@map("offers")
+}
+
+// Modelo de proposta
+model Proposal {
+  id          String         @id @default(cuid())
+  message     String?
+  proposedRate Float?
+  status      ProposalStatus @default(PENDING)
+  
+  // Timestamps
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  
+  // Relações
+  offer       Offer          @relation(fields: [offerId], references: [id], onDelete: Cascade)
+  offerId     String
+  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      String
+  transaction Transaction?
+  
+  @@map("proposals")
+}
+
+// Modelo de transação
+model Transaction {
+  id                String            @id @default(cuid())
+  status            TransactionStatus @default(PENDING)
+  paymentProofUrl   String?
+  
+  // Confirmações
+  senderConfirmed   Boolean           @default(false)
+  receiverConfirmed Boolean           @default(false)
+  completedAt       DateTime?
+  
+  // Chat
+  chatMessages      Json[]            @default([])
+  
+  // Timestamps
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  
+  // Relações
+  proposal          Proposal          @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  proposalId        String            @unique
+  
+  @@map("transactions")
+}
+
+// Modelo de avaliação
+model Review {
+  id        String   @id @default(cuid())
+  rating    Int      // 1-5 estrelas
+  comment   String?
+  
+  // Timestamps
+  createdAt DateTime @default(now())
+  
+  // Relações
+  from      User     @relation("ReviewFrom", fields: [fromId], references: [id], onDelete: Cascade)
+  fromId    String
+  to        User     @relation("ReviewTo", fields: [toId], references: [id], onDelete: Cascade)
+  toId      String
+  
+  @@unique([fromId, toId])
+  @@map("reviews")
+}
+
+// Enums
+enum OfferType {
+  SELL
+  BUY
+}
+
+enum OfferStatus {
+  ACTIVE
+  PAUSED
+  COMPLETED
+  CANCELLED
+}
+
+enum ProposalStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  CANCELLED
+}
+
+enum TransactionStatus {
+  PENDING
+  IN_PROGRESS
+  PAYMENT_PENDING
+  PAYMENT_VERIFIED
+  COMPLETED
+  CANCELLED
+  DISPUTED
+}
