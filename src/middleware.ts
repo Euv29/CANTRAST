@@ -10,15 +10,27 @@ const isPublicRoute = createRouteMatcher([
 ]);
 
 export default clerkMiddleware(async (auth, req) => {
+  // Durante o build, permitir todas as rotas
+  if (!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY) {
+    return NextResponse.next();
+  }
+
   // Se não for uma rota pública, verificar autenticação
   if (!isPublicRoute(req)) {
-    const { userId } = await auth();
-    
-    if (!userId) {
-      // Redirecionar para login se não autenticado
-      return NextResponse.redirect(new URL('/auth/signin', req.url));
+    try {
+      const { userId } = await auth();
+      
+      if (!userId) {
+        // Redirecionar para login se não autenticado
+        return NextResponse.redirect(new URL('/auth/signin', req.url));
+      }
+    } catch (error) {
+      console.error('Erro no middleware Clerk:', error);
+      return NextResponse.next();
     }
   }
+  
+  return NextResponse.next();
 });
 
 export const config = {

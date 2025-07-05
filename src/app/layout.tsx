@@ -25,8 +25,32 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode
 }>) {
+  const publishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
+  
+  if (!publishableKey) {
+    // Durante o build ou quando Clerk não está configurado
+    return (
+      <html lang="pt" className={inter.variable}>
+        <body className="font-sans antialiased bg-gray-50">
+          <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50">
+            <div className="container mx-auto px-4 py-8">
+              <div className="text-center">
+                <h1 className="text-2xl font-bold text-gray-900 mb-4">
+                  CANTRAST - Configuração Necessária
+                </h1>
+                <p className="text-gray-600">
+                  Este ambiente precisa ser configurado com as chaves de API.
+                </p>
+              </div>
+            </div>
+          </div>
+        </body>
+      </html>
+    )
+  }
+
   return (
-    <ClerkProvider>
+    <ClerkProvider publishableKey={publishableKey}>
       <html lang="pt" className={inter.variable}>
         <body className="min-h-screen bg-background font-sans antialiased">
           <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
