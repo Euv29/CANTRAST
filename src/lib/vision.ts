@@ -23,8 +23,8 @@ export function getVisionClient() {
       }
     } else {
       console.warn('Google Vision não configurado - funcionalidade de OCR desabilitada')
-      // Retornar um cliente mock para desenvolvimento/build
-      visionClient = null as any
+      // Retornar null quando não há credenciais
+      visionClient = null
     }
   }
   return visionClient
